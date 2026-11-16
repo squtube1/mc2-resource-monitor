@@ -1,0 +1,15 @@
+{
+  "id": "resource-monitor-cleaner",
+  "name": "Resource Monitor",
+  "version": "0.1.0",
+  "author": "Squtube",
+  "authorUrl": "https://github.com/squtube1",
+  "description": "Shows each pack's memory, mods, world storage and duplicate mods, on the Play screen and in a tab of its own.",
+  "repo": "squtube1/mc2-resource-monitor",
+  "main": "main.js",
+  "permissions": ["instances", "mods", "worlds", "storage", "ui"],
+  "settings": [
+    { "key": "badge", "type": "toggle", "label": "Show duplicate mods on the Instances tab", "default": true },
+    { "key": "everyMinutes", "type": "number", "label": "Rescan every (minutes)", "default": 10, "min": 1, "max": 120 }
+  ]
+}

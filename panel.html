@@ -1,0 +1,95 @@
+<style>
+  body { padding: 20px 24px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  header h2 { margin: 0; }
+  .when { font-size: 11px; opacity: .5; margin-right: 10px; }
+  .totals { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .stat { flex: 1; min-width: 120px; }
+  .stat b { display: block; font-size: 20px; color: #fff; }
+  .stat span { font-size: 11px; opacity: .55; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { text-align: left; font-weight: 600; opacity: .5; font-size: 11px; padding: 0 8px 8px; }
+  td { padding: 9px 8px; border-top: 1px solid rgba(255,255,255,0.07); vertical-align: top; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  th.num { text-align: right; }
+  .sub { display: block; font-size: 11px; opacity: .5; }
+  .live { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-right: 6px; }
+  .dup { color: #f0b45a; }
+  .empty { opacity: .6; padding: 24px 0; }
+</style>
+
+<header>
+  <h2>Resources</h2>
+  <div><span class="when" id="when"></span><button id="scan">Scan now</button></div>
+</header>
+<div class="totals card" id="totals"></div>
+<div id="body"><div class="empty">Scanning your packs…</div></div>
+
+<script>
+  function gb(bytes) {
+    if (!bytes) return "0 GB";
+    var g = bytes / 1073741824;
+    return g < 0.1 ? Math.max(1, Math.round(bytes / 1048576)) + " MB" : g.toFixed(g < 10 ? 2 : 1) + " GB";
+  }
+  function mem(mb) { return mb ? (mb / 1024).toFixed(1).replace(/\.0$/, "") + " GB" : "default"; }
+  function ago(ms) {
+    var m = Math.round((Date.now() - ms) / 60000);
+    return m < 1 ? "updated just now" : m < 60 ? "updated " + m + " min ago" : "updated " + Math.round(m / 60) + " h ago";
+  }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+  function stat(value, label) { var d = el("div", "stat"); d.appendChild(el("b", null, value)); d.appendChild(el("span", null, label)); return d; }
+
+  function render(r) {
+    if (!r) return;
+    document.getElementById("when").textContent = ago(r.at);
+    var t = document.getElementById("totals");
+    t.textContent = "";
+    t.appendChild(stat(String(r.totals.packs), "packs"));
+    t.appendChild(stat(String(r.totals.running), r.totals.running === 1 ? "running now" : "running now"));
+    t.appendChild(stat(r.totals.running ? mem(r.totals.runningMB) : "0 GB", "memory given to running games"));
+    t.appendChild(stat(gb(r.totals.worldBytes), "in worlds"));
+    t.appendChild(stat(String(r.totals.dups), r.totals.dups === 1 ? "duplicate mod" : "duplicate mods"));
+
+    var body = document.getElementById("body");
+    body.textContent = "";
+    if (!r.packs.length) { body.appendChild(el("div", "empty", "No packs yet.")); return; }
+    var table = el("table");
+    var head = el("tr");
+    [["Pack", ""], ["Memory", "num"], ["Mods", "num"], ["Worlds", "num"], ["Duplicates", ""]].forEach(function (h) { head.appendChild(el("th", h[1], h[0])); });
+    table.appendChild(head);
+    r.packs.slice().sort(function (a, b) { return b.worldBytes - a.worldBytes; }).forEach(function (p) {
+      var tr = el("tr");
+      var name = el("td");
+      if (p.running) name.appendChild(el("span", "live"));
+      name.appendChild(document.createTextNode(p.name));
+      name.appendChild(el("span", "sub", [p.version, p.loader].filter(Boolean).join(" · ")));
+      tr.appendChild(name);
+      tr.appendChild(el("td", "num", mem(p.memoryMB)));
+      var mods = el("td", "num", String(p.mods));
+      if (p.mods !== p.enabled) mods.appendChild(el("span", "sub", p.enabled + " on"));
+      tr.appendChild(mods);
+      var w = el("td", "num", gb(p.worldBytes));
+      w.appendChild(el("span", "sub", p.worlds + (p.worlds === 1 ? " world" : " worlds")));
+      tr.appendChild(w);
+      tr.appendChild(el("td", p.dups.length ? "dup" : null,
+        p.dups.length ? p.dups.map(function (d) { return d.name + " ×" + d.count; }).join(", ") : "None"));
+      table.appendChild(tr);
+    });
+    body.appendChild(table);
+  }
+
+  async function poll() {
+    try { render(await mc2.storage.get("report")); } catch (e) {}
+  }
+
+  document.getElementById("scan").onclick = async function () {
+    this.disabled = true;
+    await mc2.storage.set("scanRequest", Date.now());
+    var btn = this;
+    setTimeout(function () { btn.disabled = false; poll(); }, 2500);
+  };
+
+  poll();
+  setInterval(poll, 3000);
+</script>

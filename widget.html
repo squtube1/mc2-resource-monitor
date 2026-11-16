@@ -1,0 +1,34 @@
+<style>
+  body { padding: 12px 16px; display: flex; align-items: center; gap: 18px; }
+  .stat { flex: 1; min-width: 0; }
+  .stat b { display: block; font-size: 18px; color: #fff; }
+  .stat span { font-size: 11px; opacity: .55; white-space: nowrap; }
+  .dup b { color: #f0b45a; }
+</style>
+
+<div class="stat"><b id="running">–</b><span>running now</span></div>
+<div class="stat"><b id="memory">–</b><span>memory in use</span></div>
+<div class="stat"><b id="worlds">–</b><span>in worlds</span></div>
+<div class="stat" id="dupbox"><b id="dups">–</b><span id="duplabel">duplicate mods</span></div>
+
+<script>
+  function gb(bytes) {
+    if (!bytes) return "0 GB";
+    var g = bytes / 1073741824;
+    return g < 0.1 ? Math.max(1, Math.round(bytes / 1048576)) + " MB" : g.toFixed(g < 10 ? 2 : 1) + " GB";
+  }
+  async function poll() {
+    var r = null;
+    try { r = await mc2.storage.get("report"); } catch (e) {}
+    if (!r) return;
+    var t = r.totals;
+    document.getElementById("running").textContent = String(t.running);
+    document.getElementById("memory").textContent = t.running ? (t.runningMB / 1024).toFixed(1).replace(/\.0$/, "") + " GB" : "0 GB";
+    document.getElementById("worlds").textContent = gb(t.worldBytes);
+    document.getElementById("dups").textContent = String(t.dups);
+    document.getElementById("duplabel").textContent = t.dups === 1 ? "duplicate mod" : "duplicate mods";
+    document.getElementById("dupbox").className = t.dups ? "stat dup" : "stat";
+  }
+  poll();
+  setInterval(poll, 3000);
+</script>
